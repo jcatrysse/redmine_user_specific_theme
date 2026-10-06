@@ -13,9 +13,10 @@ module RedmineUserSpecificTheme::Patches
     def body_css_classes
       css_classes = super
       user_theme = Redmine::Themes.theme(User.current.pref.others[:ui_theme])
-      user_theme ?
-        css_classes.gsub(/theme-\S+/, "theme-#{user_theme.name.tr(' ', '_')}") :
-        css_classes
+      return css_classes unless user_theme
+      # core adds the class only for the global theme, which may be blank
+      others = css_classes.split.reject { |css| css.start_with?('theme-') }
+      ["theme-#{user_theme.name.tr(' ', '_')}", *others].join(' ')
     end
 
   end

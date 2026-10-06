@@ -40,10 +40,26 @@ class RedmineUserSpecificTheme::MyControllerTest < Redmine::ControllerTest
     assert_nil User.find(2).pref.others[:ui_theme].presence
   end
 
+  def test_update_with_unknown_theme_keeps_the_current_theme
+    User.find(2).tap { |u| u.pref.others[:ui_theme] = 'ust_alpha'; u.pref.save! }
+
+    put :account, :params => {:pref => {:ui_theme => 'nosuchtheme'}}
+
+    assert_equal 'ust_alpha', User.find(2).pref.others[:ui_theme]
+  end
+
   def test_update_with_array_theme_is_not_stored
     put :account, :params => {:pref => {:ui_theme => ['ust_alpha']}}
 
     assert_nil User.find(2).pref.others[:ui_theme].presence
+  end
+
+  def test_update_with_array_theme_keeps_the_current_theme
+    User.find(2).tap { |u| u.pref.others[:ui_theme] = 'ust_alpha'; u.pref.save! }
+
+    put :account, :params => {:pref => {:ui_theme => ['ust_beta gamma']}}
+
+    assert_equal 'ust_alpha', User.find(2).pref.others[:ui_theme]
   end
 
   def test_update_without_theme_param_keeps_the_theme

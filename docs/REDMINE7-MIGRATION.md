@@ -23,7 +23,7 @@ what is left. Written 2026-10-06 from a measured analysis (report at the bottom)
 | After sync | n.v.t. |
 | Complexity (1 trivial .. 5 rewrite) | 2 |
 | Measured on | Redmine 7.0.1 (7.0-stable-GEOxyz + latest 7.0-stable), Rails 8.1.3.1, Ruby 3.3.6, PostgreSQL 16 and MariaDB 10.11 |
-| Branch head when this file was written | `620d028` |
+| Branch head when this file was written | `130f59f` |
 
 ## Already on this branch
 
@@ -37,7 +37,7 @@ In this order: things that break, security, the GEOxyz changes, the open items, 
 
 1. Repair or replace the 6 stale tests (they use a `ui_theme` attribute that UserPreference no longer has; the code itself stores the choice in pref.others[:ui_theme]).
 
-**Open items from the analysis** (Dutch; where they repeat a priority item, the priority item wins)
+**Open items from the analysis** (Dutch; where they conflict with a decision or a priority item above, those win)
 
 2. op de server bevestigen welke remote/commit draait (verwacht siberianlove 0f261fe)
 3. Jan: die repo forken naar jcatrysse zodat een harness-run en redmine70-migration mogelijk zijn, of overstappen op redmine_theme_changer 0.7.1 met datamigratie
@@ -173,7 +173,9 @@ results quoted in the analysis come from it.
 - **5.1 compatibility**: prefer fixes that also run on Redmine 5.1 so they can be merged early;
   say so when a fix cannot.
 - **Git**: work on `redmine70-migration` only; never push to the default branch; never force-push
-  a branch someone else uses. Descriptive commit messages (what and why).
+  a branch someone else uses. Descriptive commit messages (what and why). Push after every
+  commit, together with the updated status in this file: a cloud session can stop at a usage
+  limit, and work that is not pushed is lost with its container.
 - **GitHub Actions**: manual only (`workflow_dispatch`). Do not add push, pull_request or schedule
   triggers.
 

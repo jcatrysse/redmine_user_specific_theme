@@ -18,7 +18,7 @@ what is left. Written 2026-10-06 from a measured analysis (report at the bottom)
 | Plugin id | `redmine_user_specific_theme` |
 | GEOxyz runs today | `compatibility-with-redmine-5` |
 | Upstream | Restream/redmine_user_specific_theme (ex-Undev) master @ 9e3cdc3 (2017-07-06) |
-| Runs on Redmine 7 as is | JA |
+| Runs on Redmine 7 as is | JA (tests were stale, fixed; see "Result of the migration session") |
 | Upstream sync | UPSTREAM DOOD: niets; onderhouden alternatief haru/redmine_theme_changer 0.7.1 (claimt 7.0) vraagt een migratie van user_preferences.others[:ui_theme] |
 | After sync | n.v.t. |
 | Complexity (1 trivial .. 5 rewrite) | 2 |
@@ -27,7 +27,48 @@ what is left. Written 2026-10-06 from a measured analysis (report at the bottom)
 
 ## Already on this branch
 
-- nothing: the branch equals the branch GEOxyz runs today.
+- Stale tests rewritten for `pref.others[:ui_theme]` with throw-away themes in `themes/` (6 -> 20 tests).
+- Account patch stores only an installed theme id (blank clears, anything else is ignored and keeps the current choice).
+- Body class: `theme-<name with _ for spaces>` like core 7.0, and added when the global theme is blank (core adds it only for the global theme).
+- e2e scenario `test/e2e/user_theme.mjs` and seed `test/e2e/seed.rb`.
+
+## Result of the migration session (2026-10-06, Redmine 7.0-stable-GEOxyz, Rails 8.1, Ruby 3.3.6)
+
+Baseline before any change: minitest 6 runs, 3 assertions, 0 failures, 6 errors (PostgreSQL), as the analysis said.
+
+| | PostgreSQL 16 | MariaDB 10.11 |
+|---|---|---|
+| plugin tests (minitest; no rspec in this plugin) | 20 runs, 46 assertions, 0 failures, 0 errors | 20 runs, 46 assertions, 0 failures, 0 errors |
+| e2e smoke (1 plugin route, 10 screenshots) | 0 problems | 0 problems |
+| e2e core flows (6 screenshots) | 0 problems | 0 problems |
+| e2e `user_theme.mjs` (12 screenshots, 29 assertions) | 0 problems | 0 problems |
+
+Committed screenshots in `docs/e2e/` come from the MariaDB run; the PostgreSQL run wrote to a scratch directory. Every new test was shown to fail without its fix (4 and then 3 failures on the old code). Boot and production-mode eager load: the e2e server runs in production mode. No migrations in this plugin, so no up/down. Not run: Redmine 5.1 (the fixes only use APIs that exist in 5.1, unverified), together with the other GEOxyz plugins (not available in this session), before pictures on 5.1.
+
+Webhooks (Redmine 7): the plugin does not touch issue data or hooks, so nothing to do.
+
+OpenAI review: `docs/reviews/openai-2026-10-06-986eb8d.md`, 3 findings, all resolved there (1 false blocker, 1 not applicable, 1 fixed with a test).
+
+## Inventory of functions
+
+| function | how a user reaches it | scenario | screenshot |
+|---|---|---|---|
+| Theme selector (blank + installed themes) | My account > Preferences > Theme (hook `view_my_account_preferences`) | user_theme step 1 | user-theme-selector-default.png |
+| Save a personal theme | My account > Save (PUT /my/account) | steps 2, 3 | user-theme-chosen-red.png, user-theme-issues-red.png |
+| Personal stylesheet, body class and icon sprite (`current_theme`, `body_css_classes`) | every page | steps 2, 3 | user-theme-issues-blue-icons.png |
+| Isolation between users, any logged in user may choose, blank clears | other users | step 4 | user-theme-other-user-unaffected.png, user-theme-reporter-chooses.png, user-theme-reporter-cleared.png |
+| Global theme as fallback, personal choice wins | Administration > Settings > Display | step 5 | user-theme-global-theme.png, user-theme-personal-wins.png |
+| Invalid, forged or array values ignored | PUT /my/account | step 6 | user-theme-invalid-ignored.png |
+| REST API | PUT /my/account.json | step 7 | user-theme-api-change.png |
+| Anonymous: global theme, /my/account needs login | login page | step 8 | user-theme-anonymous-global.png |
+
+The plugin has no permissions, menus, settings, routes, macros, mail, rake tasks or migrations. `admin`, `manager`, `reporter` are all exercised (any logged in user may choose a theme); `outsider` has no extra path here. Not in scope: themes themselves (see below).
+
+## Open questions for Jan
+
+1. Keep this plugin or move to `haru/redmine_theme_changer` 0.7.1 (needs a migration of `others[:ui_theme]`)? Chosen: keep, it works on 7.0 and is now tested. Recommendation: keep until a theme_changer migration is wanted for other reasons.
+2. Which themes does production offer, and are they in `themes/`? Not knowable from here; see "After the upgrade". PurpleMine2 must be updated or replaced by `gagnieray/opale` (separate task).
+3. Two items from the work list need the production server: which remote/commit runs (expected siberianlove 0f261fe, item 2) and the fork/replace decision (item 3, the fork exists now).
 
 ## Work list for the migration session
 
@@ -35,21 +76,21 @@ In this order: things that break, security, the GEOxyz changes, the open items, 
 
 **Priority items**
 
-1. Repair or replace the 6 stale tests (they use a `ui_theme` attribute that UserPreference no longer has; the code itself stores the choice in pref.others[:ui_theme]).
+1. DONE: repair or replace the 6 stale tests (they use a `ui_theme` attribute that UserPreference no longer has; the code itself stores the choice in pref.others[:ui_theme]).
 
 **Open items from the analysis** (Dutch; where they conflict with a decision or a priority item above, those win)
 
-2. op de server bevestigen welke remote/commit draait (verwacht siberianlove 0f261fe)
-3. Jan: die repo forken naar jcatrysse zodat een harness-run en redmine70-migration mogelijk zijn, of overstappen op redmine_theme_changer 0.7.1 met datamigratie
-4. op 7.0 testen of de iconensprite het gebruikersthema volgt (IconsHelper#sprite_source gebruikt current_theme, nieuw in 6/7)
-5. thema's verplaatsen van public/themes naar themes/ (7.0 scant public/themes niet meer) en elk thema testen op header/gebruikersmenu/SVG-iconen
-6. PurpleMine2 (Jans fork) is een thema-risico: upstream stil sinds 2023-11 en verwijst naar de onderhouden fork gagnieray/opale (claimt 5.x/6.x/7.x)
+2. OPEN (needs the server): op de server bevestigen welke remote/commit draait (verwacht siberianlove 0f261fe)
+3. DONE (fork exists; the replacement question is open question 1): Jan: die repo forken naar jcatrysse zodat een harness-run en redmine70-migration mogelijk zijn, of overstappen op redmine_theme_changer 0.7.1 met datamigratie
+4. DONE (the sprite follows the user theme, e2e step 3): op 7.0 testen of de iconensprite het gebruikersthema volgt (IconsHelper#sprite_source gebruikt current_theme, nieuw in 6/7)
+5. OPEN (production themes, see After the upgrade): thema's verplaatsen van public/themes naar themes/ (7.0 scant public/themes niet meer) en elk thema testen op header/gebruikersmenu/SVG-iconen
+6. OPEN (separate task): PurpleMine2 (Jans fork) is een thema-risico: upstream stil sinds 2023-11 en verwijst naar de onderhouden fork gagnieray/opale (claimt 5.x/6.x/7.x)
 
 **Checks**
 
-7. Run the plugin's whole test suite on Redmine 7.0-stable-GEOxyz with PostgreSQL AND MariaDB, and once on 5.1-stable if the branch is meant to stay 5.1-compatible.
-8. Check Redmine 7 webhooks against this plugin (see "Rules"), and note the result here even if nothing is needed.
-9. Verify every feature of the plugin by hand on a running Redmine 7 (screenshots).
+7. DONE: run the plugin's whole test suite on Redmine 7.0-stable-GEOxyz with PostgreSQL AND MariaDB, and once on 5.1-stable if the branch is meant to stay 5.1-compatible.
+8. DONE (nothing needed): check Redmine 7 webhooks against this plugin (see "Rules"), and note the result here even if nothing is needed.
+9. DONE: verify every feature of the plugin by hand on a running Redmine 7 (screenshots).
 
 ## GEOxyz changes to review or re-apply
 

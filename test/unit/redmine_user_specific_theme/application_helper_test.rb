@@ -54,6 +54,16 @@ class RedmineUserSpecificTheme::ApplicationHelperTest < ActiveSupport::TestCase
     assert_includes body_css_classes.split, 'theme-Ust_beta_gamma'
   end
 
+  def test_body_css_class_replaces_only_the_global_theme_class
+    @user.pref.others[:ui_theme] = @user_theme.id
+    @user.pref.save!
+
+    classes = body_css_classes.split
+    assert_equal ['theme-Ust_beta_gamma'], classes.select { |css| css.start_with?('theme-') }
+    assert_not_includes classes, 'theme-Ust_alpha'
+    assert_includes classes, 'controller-fakecontroller'
+  end
+
   def test_body_css_class_is_added_when_the_global_theme_is_blank
     Setting[:ui_theme] = ''
     @user.pref.others[:ui_theme] = @user_theme.id

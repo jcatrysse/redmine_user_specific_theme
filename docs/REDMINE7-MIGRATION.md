@@ -41,7 +41,7 @@ Baseline before any change: minitest 6 runs, 3 assertions, 0 failures, 6 errors 
 | plugin tests (minitest; no rspec in this plugin) | 20 runs, 46 assertions, 0 failures, 0 errors | 20 runs, 46 assertions, 0 failures, 0 errors |
 | e2e smoke (1 plugin route, 10 screenshots) | 0 problems | 0 problems |
 | e2e core flows (6 screenshots) | 0 problems | 0 problems |
-| e2e `user_theme.mjs` (12 screenshots, 29 assertions) | 0 problems | 0 problems |
+| e2e `user_theme.mjs` (12 screenshots, 29 assertions (28 + the sprite content-type check)) | 0 problems | 0 problems |
 
 Committed screenshots in `docs/e2e/` come from the MariaDB run; the PostgreSQL run wrote to a scratch directory. Every new test was shown to fail without its fix (4 and then 3 failures on the old code). Boot and production-mode eager load: the e2e server runs in production mode. No migrations in this plugin, so no up/down. Not run: Redmine 5.1 (the fixes only use APIs that exist in 5.1, unverified), together with the other GEOxyz plugins (not available in this session), before pictures on 5.1.
 

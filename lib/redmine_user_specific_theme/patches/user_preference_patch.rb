@@ -7,7 +7,9 @@ module RedmineUserSpecificTheme
         Rails.logger.info "Account with theme patch applied"
         if request.put? && params[:pref]
           theme = params[:pref][:ui_theme]
-          User.current.pref.others[:ui_theme] = theme if theme
+          # only an installed theme, or blank to fall back on the global theme
+          theme = nil unless theme.is_a?(String) && Redmine::Themes.theme(theme, :rescan => false)
+          User.current.pref.others[:ui_theme] = theme if params[:pref].key?(:ui_theme)
           User.current.pref.save
           Rails.logger.info "Saved theme: #{theme}"
         end

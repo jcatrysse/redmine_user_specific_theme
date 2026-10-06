@@ -14,7 +14,7 @@ module RedmineUserSpecificTheme::Patches
       css_classes = super
       user_theme = Redmine::Themes.theme(User.current.pref.others[:ui_theme])
       user_theme ?
-        css_classes.gsub(/theme-\S+/, "theme-#{user_theme.name}") :
+        css_classes.gsub(/theme-\S+/, "theme-#{user_theme.name.tr(' ', '_')}") :
         css_classes
     end
 

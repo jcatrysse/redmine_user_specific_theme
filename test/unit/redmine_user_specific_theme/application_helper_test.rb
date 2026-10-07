@@ -7,6 +7,11 @@ class RedmineUserSpecificTheme::ApplicationHelperTest < ActiveSupport::TestCase
 
   def setup
     install_test_themes
+    # redmine_theme_changer (installed during the switch, Jan 2026-10-07) keeps its own
+    # per-user rows and its fixtures stay in the test database; these tests are about this plugin
+    if ActiveRecord::Base.connection.table_exists?('theme_changer_user_settings')
+      ActiveRecord::Base.connection.execute('DELETE FROM theme_changer_user_settings')
+    end
     @user = User.find(1)
     User.current = @user
     @standard_theme = Redmine::Themes.theme('ust_alpha')

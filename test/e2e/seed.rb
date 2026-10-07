@@ -19,3 +19,14 @@ Setting.ui_theme = ''
   pref.others.delete(:ui_theme)
   pref.save!
 end
+# The theme migration (Jan, 2026-10-07): outsider stands for a production user who
+# chose PurpleMine2, which is not installed on Redmine 7 (THEME_MAP=purplemine2:opale).
+pref = User.find_by(login: 'outsider').pref
+pref.others[:ui_theme] = 'purplemine2'
+pref.save!
+# redmine_theme_changer, when installed: start without rows for the e2e users.
+if ActiveRecord::Base.connection.table_exists?('theme_changer_user_settings')
+  ids = User.where(login: %w(admin manager reporter outsider)).pluck(:id)
+  ActiveRecord::Base.connection.execute(
+    "DELETE FROM theme_changer_user_settings WHERE user_id IN (#{ids.map(&:to_i).join(',')})")
+end

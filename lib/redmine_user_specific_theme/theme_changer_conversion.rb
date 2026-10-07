@@ -62,10 +62,12 @@ module RedmineUserSpecificTheme
 
     def revert
       each_choice do |user_id, theme|
-        if UserSetting.where(:user_id => user_id, :theme => theme).delete_all > 0
+        row = UserSetting.find_by(:user_id => user_id)
+        if row && row.theme == theme
+          row.delete
           report :removed, user_id, theme
         else
-          report :kept, user_id, "#{theme} (theme_changer has no such row)"
+          report :kept, user_id, "#{theme} (theme_changer has #{row ? "'#{row.theme}'" : 'no row'})"
         end
       end
     end

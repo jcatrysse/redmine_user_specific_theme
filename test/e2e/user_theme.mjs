@@ -1,5 +1,7 @@
 // Per-user theme: the selector in My account, the stylesheet, body class and icon sprite that
 // follow the choice, the global fallback, and the refusal of values that are not installed themes.
+import fs from 'node:fs';
+import path from 'node:path';
 import { e2e } from '../../.codex/e2e/lib.mjs';
 
 const t = await e2e('user-theme');
@@ -30,7 +32,12 @@ async function csrfPut(url, body) {
 await t.login('manager');
 await t.go('/my/account');
 const opts = await t.page.$$eval('select[name="pref[ui_theme]"] option', o => o.map(x => x.value));
-expect(opts.includes('') && opts.includes('e2e_blue') && opts.includes('e2e_red') && opts.length === 5, `selector lists blank + installed themes (${opts})`);
+// every theme Redmine 7 scans (themes/ and app/assets/themes/, e.g. opale for the migration run)
+const installed = ['themes', 'app/assets/themes'].flatMap(d => {
+  const dir = path.join(process.env.REDMINE_DIR || 'redmine', d);
+  return fs.existsSync(dir) ? fs.readdirSync(dir).filter(n => fs.existsSync(path.join(dir, n, 'stylesheets', 'application.css'))) : [];
+});
+expect(opts.includes('') && opts.includes('e2e_blue') && opts.includes('e2e_red') && opts.length === 1 + installed.length, `selector lists blank + installed themes (${opts})`);
 expect(await select() === '', 'nothing selected by default');
 expect(![RED, BLUE].includes(await header()), 'default header is not a test theme colour');
 await t.shot('selector-default', 'My account: the Theme selector with a blank choice and the two installed themes; nothing chosen, core look');

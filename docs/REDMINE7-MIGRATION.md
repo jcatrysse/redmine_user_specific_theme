@@ -18,12 +18,13 @@ what is left. Written 2026-10-06 from a measured analysis (report at the bottom)
 | Plugin id | `redmine_user_specific_theme` |
 | GEOxyz runs today | `compatibility-with-redmine-5` |
 | Upstream | Restream/redmine_user_specific_theme (ex-Undev) master @ 9e3cdc3 (2017-07-06) |
-| Runs on Redmine 7 as is | JA (tests were stale, fixed; see "Result of the migration session") |
+| Runs on Redmine 7 as is | JA (tests were stale, fixed); **replaced by redmine_theme_changer 0.7.1 in production (Jan, q1, 2026-10-07)**: this repo carries the conversion |
 | Upstream sync | UPSTREAM DOOD: niets; onderhouden alternatief haru/redmine_theme_changer 0.7.1 (claimt 7.0) vraagt een migratie van user_preferences.others[:ui_theme] |
 | After sync | n.v.t. |
 | Complexity (1 trivial .. 5 rewrite) | 2 |
-| Measured on | Redmine 7.0.1 (7.0-stable-GEOxyz + latest 7.0-stable), Rails 8.1.3.1, Ruby 3.3.6, PostgreSQL 16 and MariaDB 10.11 |
-| Branch head when this file was written | `130f59f` |
+| Measured on | Redmine 7.0.1 (7.0-stable-GEOxyz), Rails 8.1.3.1, Ruby 3.3.6, PostgreSQL 16.15 (2026-10-07; MariaDB 10.11 on 2026-10-06, no longer required) |
+| Theme | PurpleMine2 replaced by Opale 1.7.2 (Jan, q2, 2026-10-07); works on 7.0, cosmetic findings below |
+| Branch head when this file was written | see `git log` (updated 2026-10-07) |
 
 ## Already on this branch
 
@@ -31,6 +32,14 @@ what is left. Written 2026-10-06 from a measured analysis (report at the bottom)
 - Account patch stores only an installed theme id (blank clears, anything else is ignored and keeps the current choice).
 - Body class: `theme-<name with _ for spaces>` like core 7.0, and added when the global theme is blank (core adds it only for the global theme).
 - e2e scenario `test/e2e/user_theme.mjs` and seed `test/e2e/seed.rb`.
+- **Decision q1 (2026-10-07)**: rake tasks `redmine_user_specific_theme:convert_to_theme_changer` and
+  `redmine_user_specific_theme:revert_theme_changer_conversion` (`lib/redmine_user_specific_theme/theme_changer_conversion.rb`,
+  `lib/tasks/theme_changer.rake`), 12 tests (`56a5bef`, later the clearer "kept" message on revert).
+  e2e: `test/e2e/user_theme_to_theme_changer.mjs` (both plugins installed, the conversion run through rake),
+  `test/e2e-after-removal/theme_changer.mjs` (this plugin removed). See "Switch to redmine_theme_changer".
+- **Decision q2 (2026-10-07)**: e2e `test/e2e-after-removal/opale.mjs` with Opale 1.7.2 in `themes/opale`.
+  See "Opale on Redmine 7".
+- `test/e2e/core_pages.mjs`: Project > Settings, issue list, issue page, My account with all GEOxyz plugins.
 
 ## Result of the migration session (2026-10-06, Redmine 7.0-stable-GEOxyz, Rails 8.1, Ruby 3.3.6)
 
@@ -49,6 +58,41 @@ Webhooks (Redmine 7): the plugin does not touch issue data or hooks, so nothing 
 
 OpenAI review: `docs/reviews/openai-2026-10-06-986eb8d.md`, 3 findings, all resolved there (1 false blocker, 1 not applicable, 1 fixed with a test).
 
+## Result of the decision session (2026-10-07, Redmine 7.0-stable-GEOxyz, Rails 8.1.3.1, Ruby 3.3.6, PostgreSQL 16.15)
+
+| | alone | with redmine_theme_changer 0.7.1 | with all GEOxyz plugins (43) + theme_changer |
+|---|---|---|---|
+| this plugin's tests (minitest) | 32 runs, 75 assertions, 0 failures, 0 errors (theme_changer table absent, the tests create it) | 32 runs, 75 assertions, 0 failures, 0 errors | 32 runs, 75 assertions, 0 failures, 0 errors |
+| redmine_theme_changer's own tests | | 8 runs, 23 assertions, 0 failures, 0 errors | |
+
+e2e, production mode (`docs/e2e/`, and `docs/e2e/geoxyz-all/` for the combination), 7 scenarios, 77 screenshots per run:
+
+| scenario | screenshots | main run | all GEOxyz plugins |
+|---|---|---|---|
+| `.codex/e2e/smoke.mjs` | 10 | 0 problems | 0 problems |
+| `.codex/e2e/core.mjs` | 6 | 0 problems | 1: `/issues/1` as reporter 403, redmine_view_issue_description (by design, recorded in redmine_parent_child_filters' plan) |
+| `test/e2e/core_pages.mjs` | 10 | 0 problems | 0 problems (Project > Settings, issue list, issue page 200 for admin and manager; run again after removing this plugin: 0 problems) |
+| `test/e2e/user_theme.mjs` | 12 | 0 problems | 0 problems |
+| `test/e2e/user_theme_to_theme_changer.mjs` (q1, both plugins) | 7 | 0 problems | 0 problems |
+| `test/e2e-after-removal/theme_changer.mjs` (q1, this plugin removed) | 13 | 0 problems | 0 problems |
+| `test/e2e-after-removal/opale.mjs` (q2) | 15 + 4 mobile | 0 problems | 1: the same reporter 403 from redmine_view_issue_description |
+
+Every screenshot was opened and looked at (contact sheets per scenario, the Opale and conversion pages
+one by one). Rake output of the conversion run (both runs identical):
+`DRY RUN, nothing saved: 2 updated, 1 created` / `2 updated, 1 created` / `3 unchanged` /
+revert `2 removed, 1 kept` (reporter's later "Default" kept) / `2 created, 1 unchanged`.
+
+Combination: the 34 public jcatrysse plugins with a `redmine70-migration` branch plus the private
+redmine_zenedit, redmine_agile, redmine_contacts, redmine_checklists, redmine_people,
+redmine_contacts_helpdesk, redmine_tags (id redmineup_tags) and redmine_ai_triage (heads of 2026-10-07; 42 plugins besides this one), redmine_theme_changer 0.7.1, Opale.
+Findings, none in this plugin (it uses `prepend` only):
+- **redmine_tags (redmineup_tags) + redmine_issue_field_visibility**: the `redmineup` gem 1.1.13
+  alias-chains `Issue#reload` (`reload_with_tag_list`), ifv prepends `reload`; together `SystemStackError`
+  on the first `issue.reload` (the seed did not get through). The case of Jan's rule; for redmine_tags
+  (the gem, so a prepend wrapper or a gem fix is needed). The server runs above are without redmineup_tags;
+  the test run is with it (43 plugins plus theme_changer).
+- redmine_view_issue_description refuses issue pages to the core Reporter role: by design (known).
+
 ## Inventory of functions
 
 | function | how a user reaches it | scenario | screenshot |
@@ -61,8 +105,14 @@ OpenAI review: `docs/reviews/openai-2026-10-06-986eb8d.md`, 3 findings, all reso
 | Invalid, forged or array values ignored | PUT /my/account | step 6 | user-theme-invalid-ignored.png |
 | REST API | PUT /my/account.json | step 7 | user-theme-api-change.png |
 | Anonymous: global theme, /my/account needs login | login page | step 8 | user-theme-anonymous-global.png |
+| **Conversion to theme_changer** (q1): dry run, run, idempotent rerun, THEME_MAP, skip uninstalled, replace `__system_setting__`, keep a theme_changer choice, revert | `rake redmine_user_specific_theme:convert_to_theme_changer` / `revert_theme_changer_conversion` (shell on the server; no web route, no permission involved) | user_theme_to_theme_changer (rake output in the run log) | theme-conversion-both-selectors.png, -manager-converted.png, -reporter-converted.png, -outsider-mapped.png, -admin-no-choice.png, -reverted.png |
+| Converted choices in effect after removing this plugin, as manager, reporter, outsider (Opale) and admin (no choice) | every page | e2e-after-removal/theme_changer 0, 1 | theme-changer-plugins.png, -manager-blue.png, -reporter-red.png, -outsider-opale.png |
+| theme_changer functions: user picks a theme, "Default", "Use system setting", admin default, personal over global, REST API, anonymous | My account > Information > Theme; Administration > Settings > Display | e2e-after-removal/theme_changer 2, 3, 4, 5 | theme-changer-admin-default.png, -personal-wins.png, -reporter-picks.png, -reporter-default.png, -reporter-system.png, -api-change.png, -anonymous-global.png |
+| Refusals and failure paths (q1) | private project as outsider, anonymous My account, forged `pref[theme]`, user creation via API with `pref.theme` | user_theme_to_theme_changer, e2e-after-removal/theme_changer 4 | theme-conversion-outsider-private-refused.png, theme-changer-outsider-private-refused.png, theme-changer-forged-value.png (finding 1), API 422 (finding 2, no page) |
+| **Opale** as global theme (q2): main pages, refusals, mobile | every page | e2e-after-removal/opale | opale-projects.png, -admin.png, -admin-settings.png, -issues.png, -issue.png, -issue-edit.png, -wiki.png, -my-page.png, -my-account.png, -project-settings.png, -issue-reporter.png, -reporter-settings-refused.png, -outsider-projects.png, -outsider-private-refused.png, -login.png, opale-mobile-issues.png, -issue.png, -menu-open.png, -my-page.png |
+| Core pages with all GEOxyz plugins | Project > Settings, issue list, issue page, My account | core_pages | core-pages-*.png (10), geoxyz-all/core-pages-*.png |
 
-The plugin has no permissions, menus, settings, routes, macros, mail, rake tasks or migrations. `admin`, `manager`, `reporter` are all exercised (any logged in user may choose a theme); `outsider` has no extra path here. Not in scope: themes themselves (see below).
+The plugin has no permissions, menus, settings, routes, macros, mail or migrations; since 2026-10-07 it has two rake tasks (the conversion). `admin`, `manager`, `reporter` are all exercised (any logged in user may choose a theme); `outsider` has no extra path here. Not in scope: themes themselves (see below).
 
 ## Decided by Jan (2026-10-07)
 
@@ -91,6 +141,85 @@ For this plugin:
 3. Which remote/commit runs on the server (expected siberianlove 0f261fe): still needs the server;
    it no longer matters for the code, since the plugin is removed after the conversion.
 
+## Switch to redmine_theme_changer (decision q1, 2026-10-07)
+
+**How each plugin stores the per-user theme** (read in the code, measured on Redmine 7.0.1):
+
+| | redmine_user_specific_theme 1.3.0 (this repo) | redmine_theme_changer 0.7.1 (haru, 2025-12-24) |
+|---|---|---|
+| storage | `user_preferences.others[:ui_theme]` (YAML hash in the existing column) | own table `theme_changer_user_settings` (`id`, `user_id`, `theme`, `updated_at`), migration `0001`, one row per user |
+| value | theme id (directory name) or nil | theme id, `__system_setting__` (follow the global theme) or `__default_theme__` (Redmine's own look, no theme) |
+| no choice | nil: global theme | no row, or `__system_setting__`: global theme |
+| theme not installed | falls back on the global theme | `Redmine::Themes.theme` gives nil: **no theme at all** (core look), not the global theme |
+| selector | My account > Preferences > Theme, `pref[ui_theme]` (hook `view_my_account_preferences`) | My account > Information > Theme, `pref[theme]` (hook `view_my_account`); `UserPreference#theme=` and `safe_attributes 'theme'` |
+| input check | only installed themes are stored | any string is stored |
+| patches | `prepend` on `MyController#account`, `ApplicationHelper#current_theme`, `#body_css_classes` | `prepend` on `ApplicationHelper#body_css_classes` and `UserPreference#theme(=)`; `current_theme` defined in `ApplicationHelper` through `include` + `class_eval` |
+
+Both use `prepend` for the shared methods (Jan's rule, 2026-10-07); with both installed this
+plugin's `current_theme` wins (it is prepended later, in `after_initialize`).
+
+**The conversion** (this repo, `56a5bef`): `rake redmine_user_specific_theme:convert_to_theme_changer`
+copies every user's choice into theme_changer:
+- installed theme: a row with that theme id (`created`);
+- `THEME_MAP=old:new,...` replaces a theme on the way (`THEME_MAP=purplemine2:opale`, decision q2);
+- theme not installed (after the map): **skipped and listed**, no row, so the user keeps following the
+  global theme as before (a row would leave the user without any theme);
+- a row with `__system_setting__` is replaced (`updated`): theme_changer's form saves that value for
+  every user who saves My account while both plugins are installed (measured, e2e step 2);
+- a row with another theme is kept (`kept`): the user already chose in theme_changer;
+- the same theme already there: `unchanged`. The source (`others[:ui_theme]`) is never changed, so a
+  second run changes nothing (idempotent).
+`rake redmine_user_specific_theme:revert_theme_changer_conversion` (same `THEME_MAP`) removes exactly
+the rows whose theme equals what the conversion would write; a row the user changed afterwards is kept.
+`DRY_RUN=1` runs either task in a transaction that is rolled back, with the same report.
+Tests: `test/unit/redmine_user_specific_theme/theme_changer_conversion_test.rb`, 12 tests on PostgreSQL
+(the file fails to load without the code; the `__system_setting__` test fails on the code without that branch).
+
+**theme_changer 0.7.1 on Redmine 7.0-stable-GEOxyz**: its own tests 8 runs, 23 assertions, 0 failures,
+0 errors (PostgreSQL; its test_helper needs the `simplecov-lcov` gem, added through `Gemfile.local`).
+e2e with this plugin removed (`test/e2e-after-removal/theme_changer.mjs`): converted choices in effect
+(stylesheet, body class `theme-E2e_blue`, the theme's icon sprite: 26 of 28 `<use>`), a user picks a
+theme, "Default", "Use system setting", the admin default (global theme) for a user without a choice,
+the personal choice over the global theme, REST API `PUT /my/account.json` with `pref.theme`, anonymous.
+
+**Findings in redmine_theme_changer 0.7.1** (not fixed: not our repository, no fork, Jan 2026-10-07):
+1. Any `pref[theme]` value is stored; a forged or stale value (`nosuchtheme`) leaves the user without a
+   theme (core look, not the global theme). Cosmetic, the value only goes to `Redmine::Themes.theme`.
+   e2e: theme-changer-forged-value.png. The conversion avoids writing such values.
+2. Creating a user through the REST API with `pref.theme` fails: `UserPreference#theme=` saves a row
+   before the user has an id, `validates_presence_of :user` raises, the API answers **422** and the user
+   is not created (without `pref.theme`: 201). Also `theme=` saves immediately, before the user or
+   preference itself is validated. The admin form does not send `pref[theme]`, so only the API is hit.
+3. A theme that is removed from `themes/` leaves its users without a theme (see 1), unlike this plugin.
+   Before removing a theme in production, move its users (SQL below or the UI).
+4. While both plugins are installed, My account shows two "Theme" selectors (ours under Preferences,
+   theirs under Information), and saving the form stores `__system_setting__` for theme_changer.
+   Keep the overlap to the maintenance window (steps under "After the upgrade").
+
+## Opale on Redmine 7 (decision q2, 2026-10-07)
+
+Opale 1.7.2 (release zip `opale-1.7.2.zip`: `stylesheets/application.css` and `webfonts/tabler-icons.*`,
+no `images/icons.svg`, so Redmine's own SVG sprite is used and restyled) in `themes/opale`, set as the
+global theme, Redmine 7.0-stable-GEOxyz in production mode, PostgreSQL. `test/e2e-after-removal/opale.mjs`:
+19 screenshots (15 desktop: project list, admin, Settings > Display, issue list, issue page, edit form,
+wiki, My page, My account, project settings, reporter issue page, reporter refused, outsider project list,
+outsider refused, login; 4 at 390 px: issue list, issue page, flyout menu, My page). No asset errors
+(no 404 on fonts or images, no JS errors); the icon font reports `loaded`. Same result with all GEOxyz
+plugins installed (`docs/e2e/geoxyz-all/`).
+
+Visual findings (all cosmetic; none blocks the switch):
+1. Issue page: the reaction button (thumbs up, Redmine 6.1+) sits under the "Next »" of the issue
+   navigation instead of next to the subject (opale-issue.png).
+2. The sidebar collapse button (`«`, Redmine 6.1+) is a small square on the edge of the content area,
+   overlapping the sidebar border (every page with a sidebar).
+3. 390 px: in the journal header the avatar overlaps the wrapped "minutes ago" text; long subjects in
+   the issue list and in My page blocks are clipped at the right edge instead of scrolling
+   (opale-mobile-issue.png, opale-mobile-issues.png, opale-mobile-my-page.png).
+4. Full-page screenshot of the edit form shows the sticky issue header strip at its scroll position
+   (opale-issue-edit.png); probably the screenshot, not the theme. To check by hand.
+Report 1 to 3 upstream (gagnieray/opale) if Jan wants them fixed; nothing to change in Redmine.
+Not done: PurpleMine2 on 7.0 for a before/after comparison (Jan replaces it).
+
 ## Work list for the migration session
 
 In this order: things that break, security, the GEOxyz changes, the open items, then the checks.
@@ -101,11 +230,21 @@ In this order: things that break, security, the GEOxyz changes, the open items, 
 
 **Open items from the analysis** (Dutch; where they conflict with a decision or a priority item above, those win)
 
-2. OPEN (needs the server): op de server bevestigen welke remote/commit draait (verwacht siberianlove 0f261fe)
+2. NOT NEEDED (the plugin is removed after the conversion, decision q1): op de server bevestigen welke remote/commit draait (verwacht siberianlove 0f261fe)
 3. DONE (fork exists; Jan decided q1 = switch to redmine_theme_changer, 2026-10-07): Jan: die repo forken naar jcatrysse zodat een harness-run en redmine70-migration mogelijk zijn, of overstappen op redmine_theme_changer 0.7.1 met datamigratie
 4. DONE (the sprite follows the user theme, e2e step 3): op 7.0 testen of de iconensprite het gebruikersthema volgt (IconsHelper#sprite_source gebruikt current_theme, nieuw in 6/7)
-5. OPEN (production themes, see After the upgrade): thema's verplaatsen van public/themes naar themes/ (7.0 scant public/themes niet meer) en elk thema testen op header/gebruikersmenu/SVG-iconen
-6. DECIDED (q2 = replace by Opale, 2026-10-07; see "Opale on Redmine 7"): PurpleMine2 (Jans fork) is een thema-risico: upstream stil sinds 2023-11 en verwijst naar de onderhouden fork gagnieray/opale (claimt 5.x/6.x/7.x)
+5. PRODUCTION STEP (see After the upgrade, Themes): thema's verplaatsen van public/themes naar themes/ (7.0 scant public/themes niet meer) en elk thema testen op header/gebruikersmenu/SVG-iconen
+6. DONE (q2 = replace by Opale, 2026-10-07; see "Opale on Redmine 7"): PurpleMine2 (Jans fork) is een thema-risico: upstream stil sinds 2023-11 en verwijst naar de onderhouden fork gagnieray/opale (claimt 5.x/6.x/7.x)
+
+**Decisions of 2026-10-07**
+
+10. DONE (q1): conversion to redmine_theme_changer, rake tasks with tests (`56a5bef`), e2e (`8b81845`),
+    production steps under "After the upgrade". Removing the plugin from production is a production step.
+11. DONE (q2): Opale 1.7.2 tested on Redmine 7 (`5dcd50a`), findings under "Opale on Redmine 7",
+    production steps under "After the upgrade". Fixing the cosmetic findings is for Opale upstream.
+12. DONE (general): no 5.1, PostgreSQL only, prepend rule (nothing to change here), combination run.
+13. OPEN (Jan / redmine_tags owner): redmineup gem `alias_method` on `Issue#reload` vs ifv `prepend`
+    (combination finding above). Not this plugin.
 
 **Checks**
 
@@ -121,7 +260,42 @@ None: this branch carries no GEOxyz commits of its own (upstream code only).
 
 Actions the person doing the upgrade must take, or know about, for this plugin:
 
-- Themes move from public/themes to themes/ (Redmine 7 scans themes/ and app/assets/themes/ only). Each theme needs stylesheets/application.css; a theme may ship images/icons.svg (measured: the per-user theme also drives the icon sprite on Redmine 7).
+**Themes (decision q2 and the analysis)**
+1. On the 5.1 server: `ls public/themes` and note every theme, and which ones users chose:
+   `SELECT u.login, p.others FROM user_preferences p JOIN users u ON u.id = p.user_id WHERE p.others LIKE '%ui_theme%';`
+   and the global one: `SELECT value FROM settings WHERE name = 'ui_theme';`.
+2. Redmine 7 scans only `themes/` and `app/assets/themes/` (classic, alternate). Move every theme you keep
+   from `public/themes/<id>` to `themes/<id>` **before the first boot** (themes are registered as asset paths
+   at boot); keep the directory name, it is the theme id stored per user. Each needs `stylesheets/application.css`.
+3. Opale: download `https://github.com/gagnieray/opale/releases/download/1.7.2/opale-1.7.2.zip`, unpack,
+   rename `opale-1.7.2` to `themes/opale`. Do not copy PurpleMine2 to `themes/`.
+4. `bundle exec rake assets:precompile RAILS_ENV=production` (or `assets:clobber` first if a theme looks
+   unstyled), restart.
+5. Test every remaining theme on 7.0 as a user who chose it: header and user menu (new `<nav>`, `#account`
+   dropdown), SVG icons (`icon-*` CSS backgrounds no longer work; a theme may ship `images/icons.svg`),
+   issue list, issue page, My page, admin, mobile width. Measured: the per-user theme also drives the icon
+   sprite on Redmine 7. A theme that is not fixed is removed; move its users first (step 4 of the next list).
+6. If the global theme was PurpleMine2: Administration > Settings > Display > Theme = Opale.
+
+**Switch to redmine_theme_changer (decision q1)**, in the maintenance window, before users log in:
+1. Install the plugin: `git clone https://github.com/haru/redmine_theme_changer plugins/redmine_theme_changer`,
+   `git -C plugins/redmine_theme_changer checkout 0.7.1`; keep `plugins/redmine_user_specific_theme`
+   (branch `redmine70-migration`) installed for now. `bundle exec rake redmine:plugins:migrate RAILS_ENV=production`.
+2. Dry run: `bundle exec rake redmine_user_specific_theme:convert_to_theme_changer THEME_MAP=purplemine2:opale DRY_RUN=1 RAILS_ENV=production`.
+   Use the theme id exactly as stored (the directory name from step 1 of the theme list; e.g.
+   `THEME_MAP=PurpleMine2:opale` when the directory was called `PurpleMine2`). Read the `skipped:` lines:
+   each names a theme that is not in `themes/`; add it to `THEME_MAP` or accept that those users follow
+   the global theme.
+3. Run it without `DRY_RUN`. Run it a second time: it must report only `unchanged` (and the same `skipped`).
+4. Check: `SELECT u.login, t.theme FROM theme_changer_user_settings t JOIN users u ON u.id = t.user_id ORDER BY 1;`
+   against step 1, and log in as one user with a personal theme. Undo if needed:
+   `bundle exec rake redmine_user_specific_theme:revert_theme_changer_conversion THEME_MAP=purplemine2:opale RAILS_ENV=production`.
+5. Remove redmine_user_specific_theme: `rm -rf plugins/redmine_user_specific_theme` (no migrations, nothing to
+   roll back; the rake tasks, revert included, leave with it), restart. The old values stay in `user_preferences.others[:ui_theme]`, harmless; they keep the
+   conversion repeatable until you are satisfied.
+6. Afterwards: users choose under My account > Information > Theme. A theme removed later leaves its users
+   without a theme (finding 3): move them first with
+   `UPDATE theme_changer_user_settings SET theme = '__system_setting__' WHERE theme = '<old id>';`.
 
 ## How to test
 
@@ -141,6 +315,16 @@ Write one scenario per function in `test/e2e/<function>.mjs` (example at the top
 `admin`, `manager` (every permission), `reporter` (no plugin permissions), `outsider` (no
 membership); password `Redmine7Test!`. Needs Node with Playwright and Chromium
 (`npm install -g playwright && npx playwright install --with-deps chromium`).
+
+For the theme migration (decisions of 2026-10-07): put redmine_theme_changer 0.7.1 in
+`redmine/plugins/` (`git clone https://github.com/haru/redmine_theme_changer` and `checkout 0.7.1`;
+its own tests also need `gem 'simplecov-lcov'` in `redmine/Gemfile.local`) and Opale in
+`redmine/themes/opale` before `start_server.sh`; `e2e.sh` then also runs the conversion scenario.
+The state after removal: `./.codex/start_server.sh --stop`, move `redmine/plugins/redmine_user_specific_theme`
+out, start `bin/rails server -e production -p 3000` in `redmine/`, then
+`REDMINE_DIR=$PWD/redmine RMP_E2E_OUT=docs/e2e node test/e2e-after-removal/theme_changer.mjs` and
+`.../opale.mjs`, and put the plugin back. As root, `test_setup.sh` cannot provision PostgreSQL
+(`$SUDO -u postgres` with an empty `$SUDO`): create the role by hand and use `RMP_PROVISION_DB=0`.
 
 On GitHub the same runs by hand only: Actions > "Redmine tests (manual)" > Run workflow (tick
 "e2e" for the browser run; screenshots come back as an artifact).

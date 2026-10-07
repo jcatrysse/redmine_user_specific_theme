@@ -1,8 +1,9 @@
 module RedmineUserSpecificTheme
   # Copies every user's theme from this plugin (user_preferences.others[:ui_theme])
   # to redmine_theme_changer (one row per user in theme_changer_user_settings).
-  # The source is left untouched, so the conversion can run again (it only adds
-  # what is missing) and can be reverted (it removes only the rows it would add).
+  # The source is left untouched, so the conversion can run again (it only writes
+  # rows that are missing or say "use system setting") and can be reverted (it
+  # removes the rows that hold what it would write).
   class ThemeChangerConversion
     TABLE = 'theme_changer_user_settings'
     # theme_changer's "use system setting", the same as no row; its My account form

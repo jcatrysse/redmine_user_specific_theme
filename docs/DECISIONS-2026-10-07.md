@@ -33,3 +33,8 @@ What to do:
 7. Update Status, the inventory, the work list and "After the upgrade". Push `redmine70-migration` after every commit.
 8. These decisions are final; do not stop to ask about them. If one turns out to be impossible, write down why in the plan and carry on with the rest.
 9. End with a short report in Dutch: per decision what you did (commit), test numbers, e2e numbers (scenarios, screenshots, problems), the review result, what is left for Jan.
+
+## Round 3, decided by Jan on 2026-10-07 (late evening)
+
+- opale: Opale shows some small cosmetic deviations on Redmine 7 (no errors). Report them to the Opale maintainer (gagnieray/opale)?
+  Jan chose: "Wel melden". Prepare a ready-to-post issue for github.com/gagnieray/opale (English, one issue listing the points, Redmine 7.0 version, steps, screenshots referenced from this branch) in docs/opale-upstream-issue.md. Jan posts it himself; this session does not contact the maintainer.

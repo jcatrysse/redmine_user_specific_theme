@@ -212,8 +212,9 @@ outsider refused, login; 4 at 390 px: issue list, issue page, flyout menu, My pa
 plugins installed (`docs/e2e/geoxyz-all/`).
 
 Visual findings (all cosmetic; none blocks the switch):
-1. Issue page: the reaction button (thumbs up, Redmine 6.1+) sits under the "Next »" of the issue
-   navigation instead of next to the subject (opale-issue.png).
+1. Issue page: the reaction button (thumbs up) sits under the "Next »" of the issue navigation
+   (opale-issue.png). Compared with the default theme on 2026-10-07: core does the same, so not an
+   Opale point.
 2. The sidebar collapse button (`«`, Redmine 6.1+) is a small square on the edge of the content area,
    overlapping the sidebar border (every page with a sidebar).
 3. 390 px: in the journal header the avatar overlaps the wrapped "minutes ago" text; long subjects in
@@ -221,7 +222,10 @@ Visual findings (all cosmetic; none blocks the switch):
    (opale-mobile-issue.png, opale-mobile-issues.png, opale-mobile-my-page.png).
 4. Full-page screenshot of the edit form shows the sticky issue header strip at its scroll position
    (opale-issue-edit.png); probably the screenshot, not the theme. To check by hand.
-Report 1 to 3 upstream (gagnieray/opale) if Jan wants them fixed; nothing to change in Redmine.
+Jan decided to report them ("Wel melden", round 3, 2026-10-07): ready-to-post issue in
+`docs/opale-upstream-issue.md` (points 2 and 3, plus the overflowing done-ratio bars under Subtasks and
+Related issues at 390 px), with default-theme comparison screenshots in `docs/e2e/opale-upstream/`.
+Jan posts it himself; nothing to change in Redmine.
 Not done: PurpleMine2 on 7.0 for a before/after comparison (Jan replaces it).
 
 ## Work list for the migration session

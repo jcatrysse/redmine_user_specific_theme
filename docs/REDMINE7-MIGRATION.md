@@ -77,6 +77,10 @@ e2e, production mode (`docs/e2e/`, and `docs/e2e/geoxyz-all/` for the combinatio
 | `test/e2e-after-removal/theme_changer.mjs` (q1, this plugin removed) | 13 | 0 problems | 0 problems |
 | `test/e2e-after-removal/opale.mjs` (q2) | 15 + 4 mobile | 0 problems | 1: the same reporter 403 from redmine_view_issue_description |
 
+Review: own adversarial review of the new commits (one inaccurate comment, fixed in `d4cf2b6`), then
+the OpenAI review of `f9c3dc7..d4cf2b6`: `docs/reviews/openai-2026-10-07-d4cf2b6.md`, no findings.
+Revert caveat: a row that already held the same theme before the conversion is removed by the revert too.
+
 Every screenshot was opened and looked at (contact sheets per scenario, the Opale and conversion pages
 one by one). Rake output of the conversion run (both runs identical):
 `DRY RUN, nothing saved: 2 updated, 1 created` / `2 updated, 1 created` / `3 unchanged` /

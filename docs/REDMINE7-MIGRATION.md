@@ -4,7 +4,7 @@ Start a Claude Code (or Codex) session on this repository, branch `redmine70-mig
 
 > Read CLAUDE.md and docs/REDMINE7-MIGRATION.md, then carry out the Redmine 7 migration of this
 > plugin as described there, on branch redmine70-migration. That includes the plugin's tests on
-> PostgreSQL and MariaDB, every function exercised end to end on a real running Redmine in a
+> PostgreSQL, every function exercised end to end on a real running Redmine in a
 > browser (with and without permissions, failure paths included) with screenshots you looked at,
 > and an OpenAI review of the diff when OPENAI_API_KEY is set. Report to me in Dutch at the end.
 
@@ -64,11 +64,32 @@ OpenAI review: `docs/reviews/openai-2026-10-06-986eb8d.md`, 3 findings, all reso
 
 The plugin has no permissions, menus, settings, routes, macros, mail, rake tasks or migrations. `admin`, `manager`, `reporter` are all exercised (any logged in user may choose a theme); `outsider` has no extra path here. Not in scope: themes themselves (see below).
 
-## Open questions for Jan
+## Decided by Jan (2026-10-07)
 
-1. Keep this plugin or move to `haru/redmine_theme_changer` 0.7.1 (needs a migration of `others[:ui_theme]`)? Chosen: keep, it works on 7.0 and is now tested. Recommendation: keep until a theme_changer migration is wanted for other reasons.
-2. Which themes does production offer, and are they in `themes/`? Not knowable from here; see "After the upgrade". PurpleMine2 must be updated or replaced by `gagnieray/opale` (separate task).
-3. Two items from the work list need the production server: which remote/commit runs (expected siberianlove 0f261fe, item 2) and the fork/replace decision (item 3, the fork exists now).
+Recorded from docs/DECISIONS-2026-10-07.md (Jan Catrysse, 2026-10-07, coordinating session
+https://claude.ai/code/session_01GiSsYPm3bxvqrpZkdCxNoi). Final; do not reopen.
+
+General, for every GEOxyz plugin:
+- Straight to Redmine 7, no backports to 5.1; `redmine70-migration` is what goes live. Redmine 5.1
+  compatibility is no longer a requirement.
+- PostgreSQL 16 only (production). Tests and e2e on PostgreSQL; MariaDB runs are no longer required,
+  a MariaDB-only problem is a note here, not a blocker.
+- Deface without a version constraint: n.v.t., this plugin has no Gemfile and no deface.
+- A core method other plugins also patch is patched with `prepend`, never `alias_method`: this
+  plugin already uses `prepend` only (`MyController`, `ApplicationHelper`); checked, nothing to change.
+- GitHub Actions stay manual only (`workflow_dispatch`).
+
+For this plugin:
+1. **q1, keep redmine_user_specific_theme or switch to redmine_theme_changer?** Decided 2026-10-07:
+   **B, "Overstappen op redmine_theme_changer"** (Een onderhouden plugin, maar de themakeuze van alle
+   gebruikers moet omgezet worden, en hoe die plugin de keuze bewaart is niet nagekeken.). This repo
+   carries the conversion (rake task) and the production steps; redmine_user_specific_theme is
+   removed from production after the conversion. See "Switch to redmine_theme_changer".
+2. **q2, update PurpleMine2 for Redmine 7 or replace it by Opale?** Decided 2026-10-07:
+   **B, "Vervangen door Opale (gagnieray/opale)"** (Een onderhouden opvolger die Redmine 5, 6 en 7
+   claimt; hij moet nog op Redmine 7 getest worden.). See "Opale on Redmine 7".
+3. Which remote/commit runs on the server (expected siberianlove 0f261fe): still needs the server;
+   it no longer matters for the code, since the plugin is removed after the conversion.
 
 ## Work list for the migration session
 
@@ -81,14 +102,14 @@ In this order: things that break, security, the GEOxyz changes, the open items, 
 **Open items from the analysis** (Dutch; where they conflict with a decision or a priority item above, those win)
 
 2. OPEN (needs the server): op de server bevestigen welke remote/commit draait (verwacht siberianlove 0f261fe)
-3. DONE (fork exists; the replacement question is open question 1): Jan: die repo forken naar jcatrysse zodat een harness-run en redmine70-migration mogelijk zijn, of overstappen op redmine_theme_changer 0.7.1 met datamigratie
+3. DONE (fork exists; Jan decided q1 = switch to redmine_theme_changer, 2026-10-07): Jan: die repo forken naar jcatrysse zodat een harness-run en redmine70-migration mogelijk zijn, of overstappen op redmine_theme_changer 0.7.1 met datamigratie
 4. DONE (the sprite follows the user theme, e2e step 3): op 7.0 testen of de iconensprite het gebruikersthema volgt (IconsHelper#sprite_source gebruikt current_theme, nieuw in 6/7)
 5. OPEN (production themes, see After the upgrade): thema's verplaatsen van public/themes naar themes/ (7.0 scant public/themes niet meer) en elk thema testen op header/gebruikersmenu/SVG-iconen
-6. OPEN (separate task): PurpleMine2 (Jans fork) is een thema-risico: upstream stil sinds 2023-11 en verwijst naar de onderhouden fork gagnieray/opale (claimt 5.x/6.x/7.x)
+6. DECIDED (q2 = replace by Opale, 2026-10-07; see "Opale on Redmine 7"): PurpleMine2 (Jans fork) is een thema-risico: upstream stil sinds 2023-11 en verwijst naar de onderhouden fork gagnieray/opale (claimt 5.x/6.x/7.x)
 
 **Checks**
 
-7. DONE: run the plugin's whole test suite on Redmine 7.0-stable-GEOxyz with PostgreSQL AND MariaDB, and once on 5.1-stable if the branch is meant to stay 5.1-compatible.
+7. DONE: run the plugin's whole test suite on Redmine 7.0-stable-GEOxyz with PostgreSQL (and MariaDB, 2026-10-06; no longer required). 5.1: dropped (Jan, 2026-10-07).
 8. DONE (nothing needed): check Redmine 7 webhooks against this plugin (see "Rules"), and note the result here even if nothing is needed.
 9. DONE: verify every feature of the plugin by hand on a running Redmine 7 (screenshots).
 
@@ -133,7 +154,7 @@ results quoted in the analysis come from it.
 1. **Start**: `git fetch && git checkout redmine70-migration && git pull`. Read this whole file,
    including the analysis report at the bottom. Do not reopen decisions recorded here.
 2. **Baseline, before you change anything**:
-   - the plugin's tests on Redmine 7.0-stable-GEOxyz with PostgreSQL and with MariaDB;
+   - the plugin's tests on Redmine 7.0-stable-GEOxyz with PostgreSQL;
    - a real running Redmine with this plugin (`./.codex/start_server.sh`) and the browser run
      (`./.codex/e2e.sh`: smoke over every page the plugin adds, plus the core issue flows).
    Write the numbers here. Something already broken now is a finding, not your regression.
@@ -145,9 +166,8 @@ results quoted in the analysis come from it.
 4. **GEOxyz changes**: go through the table above, one item at a time. Each kept or re-made change
    is its own commit with a test that proves it. Record the verdict in the table.
 5. **Work list**: then the numbered list, in order. One concern per commit.
-6. **Portability**: everything must run on Redmine's supported databases (PostgreSQL,
-   MySQL/MariaDB; SQLite where the plugin already supports it). Migrations must be reversible and
-   are run down and up on PostgreSQL and MariaDB.
+6. **Portability**: PostgreSQL 16 is the target (Jan, 2026-10-07); keep SQL portable where that
+   costs nothing. Migrations must be reversible and are run down and up on PostgreSQL.
 7. **Together**: run with the other GEOxyz plugins installed (the migration kit's harness, or
    `RMP_EXTRA_PLUGINS`). A failure that only appears in combination is a finding to record here.
 8. **End to end, visually, every function**: on the real Redmine from `start_server.sh`
@@ -164,9 +184,8 @@ results quoted in the analysis come from it.
    - Functions without a page (mail in and out, REST API, rake tasks, cron, webhooks): exercise
      them against the same running instance (mails land in `redmine/tmp/mails`, `t.mails()`
      reads them; API through `t.page.request`) and record command and result.
-   - Before pictures where behaviour or layout changes: the branch GEOxyz runs today, on
-     Redmine 5.1, same scenarios, `RMP_E2E_OUT=docs/e2e/before`.
-   - Run the whole e2e set once on MariaDB as well (`RMP_DB=mariadb`, then `start_server.sh --reset`).
+   - Before pictures where behaviour or layout changes: optional; the 5.1 server is no longer a
+     reference (Jan, 2026-10-07).
 9. **Independent review**: first your own, adversarial: re-read the whole diff as if someone
    else wrote it and you are paid to reject it. Then, **when `OPENAI_API_KEY` is set in the
    session**, `./.codex/openai_review.sh`: it sends the diff of this branch to an OpenAI model
@@ -211,8 +230,12 @@ results quoted in the analysis come from it.
   (on by default: `t.sudo()` in a scenario). The breaker list is in the migration kit's CHECKLIST.md.
 - **Locales**: keep the locales the plugin ships in sync; translate a new key by matching the
   closest existing key in the same file, not from scratch; do not add new languages.
-- **5.1 compatibility**: prefer fixes that also run on Redmine 5.1 so they can be merged early;
-  say so when a fix cannot.
+- **No 5.1** (Jan, 2026-10-07): GEOxyz goes straight to Redmine 7; no backports, no code paths
+  that exist only for 5.1.
+- **PostgreSQL only** (Jan, 2026-10-07): production runs PostgreSQL 16; tests and e2e run on
+  PostgreSQL. Keep SQL portable where that costs nothing; a MariaDB-only problem is a note here.
+- **Core patches**: a core method other plugins also patch is patched with `prepend`, never with
+  `alias_method` (Jan, 2026-10-07).
 - **Git**: work on `redmine70-migration` only; never push to the default branch; never force-push
   a branch someone else uses. Descriptive commit messages (what and why). Push after every
   commit, together with the updated status in this file: a cloud session can stop at a usage
@@ -223,7 +246,7 @@ results quoted in the analysis come from it.
 ## Definition of done
 
 - All items of the work list are done or explicitly deferred with a reason, in this file.
-- The plugin's tests are green on Redmine 7.0-stable-GEOxyz with PostgreSQL and MariaDB
+- The plugin's tests are green on Redmine 7.0-stable-GEOxyz with PostgreSQL
   (numbers in this file); boot, production-like eager load, migrations up/down OK.
 - Every function in the inventory exercised end to end on a real running Redmine, with and
   without permissions and on its failure paths; `./.codex/e2e.sh` green; screenshots looked at,
